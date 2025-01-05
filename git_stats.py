@@ -27,8 +27,8 @@ def find_commits(dir: str, after: str, before: str) -> dict[str, dict]:
         time, commit = line[:-1].split(" ")
         date = datetime.fromtimestamp(int(time))
         # day = date.year * 400 + date.month * 40 + date.day
-        day = date.isocalendar()[1]
-        # day = date
+        # day = date.isocalendar()[1]
+        day = date
         if day != current:
             current = day
             commits[commit] = {"date": date}
@@ -50,14 +50,9 @@ def find_text(commits: dict[str, dict], find: dict[str, str]):
         print(commits[batch[-1]]["date"])  # , end='\r')
 
 
-def main():
-    args = parse_args()
-    commits = find_commits(args.directory, args.after, args.before)
-    find = {"Old": "extends Vue", "Mixin": "extends mixins", "Old total": "extends \(Vue\|mixins\)",
-            "New": "<script setup"}
-    find_text(commits, find)
-
-    os.chdir(dirname(realpath(__file__)))
+def draw_chart(commits: dict[str, dict], find: dict[str, str]):
+    fig = plt.gcf()
+    fig.set_size_inches(10, 10)
     dates = [commit["date"] for commit in commits.values()]
     for name in find.keys():
         plt.plot(dates, [commit.get(name, 0) for commit in commits.values()], label=name)
@@ -65,9 +60,18 @@ def main():
     plt.legend()
     plt.ylabel('Count')
     # plt.show()
-    plt.savefig('counts.png')
+    os.chdir(dirname(realpath(__file__)))
+    fig.savefig('counts.png')
     plt.close()
-    print(commits)
+
+
+def main():
+    args = parse_args()
+    commits = find_commits(args.directory, args.after, args.before)
+    find = {"Old": "extends Vue", "Mixin": "extends mixins", "Old total": "extends \(Vue\|mixins\)",
+            "New": "<script setup"}
+    find_text(commits, find)
+    draw_chart(commits, find)
 
 
 main()
