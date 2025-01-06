@@ -10,12 +10,14 @@ import matplotlib.pyplot as plt
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser("git_stats")
     parser.add_argument("directory", help="The git dir to analyze.", type=str)
-    parser.add_argument("--after", help="From date.", type=str)
-    parser.add_argument("--before", help="To date.", type=str)
+    parser.add_argument("-a", "--after", help="From date", type=str)
+    parser.add_argument("-b", "--before", help="To date", type=str)
+    parser.add_argument("-p", "--period", help="Sampling period", choices=["commit", "day", "week"], default="week")
+    # parser.print_help()
     return parser.parse_args()
 
 
-def find_commits(dir: str, after: str, before: str) -> dict[str, dict]:
+def find_commits(dir: str, after: str, before: str, period: str) -> dict[str, dict]:
     os.chdir(realpath(expanduser(dir)))
     options = ""
     if after: options = options + f"--after={after} "
@@ -26,11 +28,16 @@ def find_commits(dir: str, after: str, before: str) -> dict[str, dict]:
     for line in lines:
         time, commit = line[:-1].split(" ")
         date = datetime.fromtimestamp(int(time))
-        # day = date.year * 400 + date.month * 40 + date.day
-        # day = date.isocalendar()[1]
-        day = date
-        if day != current:
-            current = day
+        if period == "day":
+            time = date.year * 400 + date.month * 40 + date.day
+        elif period == "week":
+            time = date.isocalendar()[1]
+        elif period == "commit":
+            time = date
+        else:
+            raise Exception("Invalid period " + period)
+        if time != current:
+            current = time
             commits[commit] = {"date": date}
     return commits
 
@@ -50,11 +57,11 @@ def find_text(commits: dict[str, dict], find: dict[str, str]):
         print(commits[batch[-1]]["date"])  # , end='\r')
 
 
-def draw_chart(commits: dict[str, dict], find: dict[str, str]):
+def draw_chart(commits: dict[str, dict], names):
     fig = plt.gcf()
     fig.set_size_inches(10, 10)
     dates = [commit["date"] for commit in commits.values()]
-    for name in find.keys():
+    for name in names:
         plt.plot(dates, [commit.get(name, 0) for commit in commits.values()], label=name)
 
     plt.legend()
@@ -67,11 +74,13 @@ def draw_chart(commits: dict[str, dict], find: dict[str, str]):
 
 def main():
     args = parse_args()
-    commits = find_commits(args.directory, args.after, args.before)
-    find = {"Old": "extends Vue", "Mixin": "extends mixins", "Old total": "extends \(Vue\|mixins\)",
-            "New": "<script setup"}
+    commits = find_commits(args.directory, args.after, args.before, args.period)
+    find = {"Old simple": "extends Vue", "Old mixin": "extends mixins", "New": "<script setup"}
     find_text(commits, find)
-    draw_chart(commits, find)
+    for commit in commits.values():
+        commit["Old total"] = commit.get("Old simple", 0) + commit.get("Old mixin", 0)
+        commit["Total"] = commit["Old total"] + commit.get("New", 0)
+    draw_chart(commits, ["Old simple", "Old mixin", "Old Total", "New", "Total"])
 
 
 main()
