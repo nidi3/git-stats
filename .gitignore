@@ -1,3 +1,5 @@
 .idea/
 .venv/
 *.iml
+build/
+__pycache__/

@@ -6,8 +6,11 @@ authors = ["Stefan Niederhauser <ghuder5@gmx.ch>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
-matplotlib="3.10.0"
+python = "^3.14"
+matplotlib = "^3.10.7"
+
+[tool.poetry.scripts]
+git-stats = "git_stats.cli:main"
 
 
 [build-system]
