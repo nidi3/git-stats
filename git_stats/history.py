@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+from fnmatch import fnmatchcase
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from os.path import expanduser, realpath
@@ -74,10 +75,15 @@ def count_matches(id: str, regex: str, paths: list[str], literal: bool) -> dict[
     return {location.split(":", 1)[1]: int(count) for location, count in (line.split("\0") for line in output.splitlines())}
 
 
-def find_files(commits: dict[str, dict]):
+def find_files(commits: dict[str, dict], excludes: list[str]):
     for id, commit in commits.items():
         lines = git("ls-tree", "-r", "-l", id).splitlines()
-        lines_parts = [line.split(maxsplit=5) for line in lines]
-        commit["files"] = [{"size": int(parts[3]), "name": parts[4]} for parts in lines_parts]
+        lines_parts = [line.split(maxsplit=4) for line in lines]
+        commit["files"] = [{"size": int(parts[3]), "name": parts[4]} for parts in lines_parts
+                           if not is_excluded(parts[4], excludes)]
 
         print(commit["date"])  # , end='\r')
+
+
+def is_excluded(path: str, excludes: list[str]) -> bool:
+    return any(fnmatchcase(path, exclude) or fnmatchcase(path, exclude.rstrip("/") + "/*") for exclude in excludes)

@@ -21,10 +21,10 @@ def main():
 
 def draw(find: str, output: str, project: str, commits: dict[str, dict], args: Namespace):
     if find == "files":
-        find_files(commits)
+        find_files(commits, args.exclude)
         draw_files_chart(output, f"{project}: Files", commits)
     elif find == "size":
-        find_files(commits)
+        find_files(commits, args.exclude)
         draw_size_chart(output, f"{project}: Average file size", commits)
     elif find == "commits":
         draw_find_chart(output, f"{project}: Commits per {args.period}", commits, ["commits"])
