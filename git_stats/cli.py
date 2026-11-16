@@ -3,7 +3,7 @@ import os
 from argparse import Namespace
 from os.path import expanduser, realpath, join, dirname, basename
 
-from git_stats.charts import draw_find_chart, draw_files_chart
+from git_stats.charts import draw_find_chart, draw_files_chart, draw_size_chart
 from git_stats.history import find_commits, find_text, find_files
 from git_stats.searches import SEARCHES
 
@@ -23,6 +23,9 @@ def draw(find: str, output: str, project: str, commits: dict[str, dict], args: N
     if find == "files":
         find_files(commits)
         draw_files_chart(output, f"{project}: Files", commits)
+    elif find == "size":
+        find_files(commits)
+        draw_size_chart(output, f"{project}: Average file size", commits)
     elif find == "commits":
         draw_find_chart(output, f"{project}: Commits per {args.period}", commits, ["commits"])
     else:
@@ -37,8 +40,8 @@ def parse_args() -> Namespace:
     parser.add_argument("-a", "--after", help="From date", type=str)
     parser.add_argument("-b", "--before", help="To date", type=str)
     parser.add_argument("-p", "--period", help="Sampling period", choices=["commit", "day", "week", "month"], default="week")
-    parser.add_argument("-f", "--find", help="Predefined regexes to count, or files or commits; one chart each",
-                        choices=[*SEARCHES, "files", "commits"], action="extend", nargs="+", required=True)
+    parser.add_argument("-f", "--find", help="Predefined regexes to count, or files, size or commits; one chart each",
+                        choices=[*SEARCHES, "files", "size", "commits"], action="extend", nargs="+", required=True)
     parser.add_argument("-x", "--exclude", help="Path excluded from --find; repeatable.", action="append", default=[])
     parser.add_argument("-o", "--output", help="Chart file in build/ (default: DIRECTORY-FIND.png)", type=str)
     args = parser.parse_args()
