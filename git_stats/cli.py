@@ -1,11 +1,13 @@
 import argparse
 import os
+import re
 from argparse import Namespace
+from collections.abc import Callable
 from os.path import expanduser, realpath, join, dirname, basename
 
-from git_stats.charts import draw_find_chart, draw_files_chart, draw_size_chart
+from git_stats.charts import draw_find_chart
 from git_stats.history import find_commits, find_text, find_files
-from git_stats.searches import SEARCHES
+from git_stats.searches import SEARCHES, TEST_FILE
 
 
 def main():
@@ -22,10 +24,12 @@ def main():
 def draw(find: str, output: str, project: str, commits: dict[str, dict], args: Namespace):
     if find == "files":
         find_files(commits, args.exclude)
-        draw_files_chart(output, f"{project}: Files", commits)
+        measure_files(commits, len)
+        draw_find_chart(output, f"{project}: Files", commits, ["Total", "Prod", "Test"])
     elif find == "size":
         find_files(commits, args.exclude)
-        draw_size_chart(output, f"{project}: Average file size", commits)
+        measure_files(commits, average_size)
+        draw_find_chart(output, f"{project}: Average file size", commits, ["Total", "Prod", "Test"], "Bytes")
     elif find == "commits":
         draw_find_chart(output, f"{project}: Commits per {args.period}", commits, ["commits"])
     else:
@@ -48,3 +52,15 @@ def parse_args() -> Namespace:
     if args.output and len(args.find) > 1:
         parser.error("--output needs a single --find")
     return args
+
+
+def measure_files(commits: dict[str, dict], measure: Callable[[list[dict]], float]):
+    test_file = re.compile(TEST_FILE)
+    for commit in commits.values():
+        test = [file for file in commit["files"] if test_file.search(file["name"])]
+        prod = [file for file in commit["files"] if not test_file.search(file["name"])]
+        commit.update(Total=measure(commit["files"]), Prod=measure(prod), Test=measure(test))
+
+
+def average_size(files: list[dict]) -> float:
+    return sum(file["size"] for file in files) / max(len(files), 1)
