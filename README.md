@@ -4,7 +4,7 @@ Charts how often regexes match, or how many files exist, over a git repository's
 
 ```
 poetry install
-poetry run git-stats <repo> [-a AFTER] [-b BEFORE] [-p {commit,day,week,month}] -f SEARCH ... [-x PATH ...] [-o FILE]
+poetry run git-stats <repo> [-a AFTER] [-b BEFORE] [-p {commit,day,week,month}] -f SEARCH ... [-i PATH ...] [-x PATH ...] [-o FILE]
 ```
 
 `-f` picks a group of regexes from `SEARCHES` in `git_stats/searches.py`, each regex becoming one line on the chart; `-f files` charts the number of files, `-f size` their average size in bytes, each split into prod and test, `-f commits` the number of commits per period. Charts are written to `build/`. See `-h` for all options.

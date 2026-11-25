@@ -23,18 +23,18 @@ def main():
 
 def draw(find: str, output: str, project: str, commits: dict[str, dict], args: Namespace):
     if find == "files":
-        find_files(commits, args.exclude)
+        find_files(commits, args.include, args.exclude)
         measure_files(commits, len)
         draw_find_chart(output, f"{project}: Files", commits, ["Total", "Prod", "Test"])
     elif find == "size":
-        find_files(commits, args.exclude)
+        find_files(commits, args.include, args.exclude)
         measure_files(commits, average_size)
         draw_find_chart(output, f"{project}: Average file size", commits, ["Total", "Prod", "Test"], "Bytes")
     elif find == "commits":
         draw_find_chart(output, f"{project}: Commits per {args.period}", commits, ["commits"])
     else:
         search = SEARCHES[find]
-        find_text(commits, search.regexes, search.files, args.exclude)
+        find_text(commits, search.regexes, search.files, args.include, args.exclude)
         draw_find_chart(output, f"{project}: {search.description}", commits, list(search.regexes))
 
 
@@ -46,6 +46,7 @@ def parse_args() -> Namespace:
     parser.add_argument("-p", "--period", help="Sampling period", choices=["commit", "day", "week", "month"], default="week")
     parser.add_argument("-f", "--find", help="Predefined regexes to count, or files, size or commits; one chart each",
                         choices=[*SEARCHES, "files", "size", "commits"], action="extend", nargs="+", required=True)
+    parser.add_argument("-i", "--include", help="Path included in --find, all if none; repeatable.", action="append", default=[])
     parser.add_argument("-x", "--exclude", help="Path excluded from --find; repeatable.", action="append", default=[])
     parser.add_argument("-o", "--output", help="Chart file in build/ (default: DIRECTORY-FIND.png)", type=str)
     args = parser.parse_args()

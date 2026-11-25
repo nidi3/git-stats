@@ -39,16 +39,16 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
 
-def find_text(commits: dict[str, dict], find: dict[str, str], files: dict[str, str], excludes: list[str]):
-    excluded = [f":!{exclude}" for exclude in excludes]
+def find_text(commits: dict[str, dict], find: dict[str, str], files: dict[str, str], includes: list[str], excludes: list[str]):
+    pathspecs = [*includes, *(f":!{exclude}" for exclude in excludes)]
     counts: dict[str, dict[str, int]] = {regex: {} for regex in find.values()}
     previous = None
     with ThreadPoolExecutor() as pool:
         for id, commit in reversed(commits.items()):
             if previous is None:
-                literal, paths = False, excluded
+                literal, paths = False, pathspecs
             else:
-                literal, paths = True, changed_files(previous, id, excluded)
+                literal, paths = True, changed_files(previous, id, pathspecs)
                 for file_counts in counts.values():
                     for path in paths:
                         file_counts.pop(path, None)
@@ -64,8 +64,8 @@ def find_text(commits: dict[str, dict], find: dict[str, str], files: dict[str, s
             print(commit["date"])  # , end='\r')
 
 
-def changed_files(old: str, new: str, excluded: list[str]) -> list[str]:
-    return git("diff", "--name-only", "--no-renames", "-z", old, new, "--", *excluded).split("\0")[:-1]
+def changed_files(old: str, new: str, pathspecs: list[str]) -> list[str]:
+    return git("diff", "--name-only", "--no-renames", "-z", old, new, "--", *pathspecs).split("\0")[:-1]
 
 
 def count_matches(id: str, regex: str, paths: list[str], literal: bool) -> dict[str, int]:
@@ -75,15 +75,19 @@ def count_matches(id: str, regex: str, paths: list[str], literal: bool) -> dict[
     return {location.split(":", 1)[1]: int(count) for location, count in (line.split("\0") for line in output.splitlines())}
 
 
-def find_files(commits: dict[str, dict], excludes: list[str]):
+def find_files(commits: dict[str, dict], includes: list[str], excludes: list[str]):
     for id, commit in commits.items():
         lines = git("ls-tree", "-r", "-l", id).splitlines()
         lines_parts = [line.split(maxsplit=4) for line in lines]
         commit["files"] = [{"size": int(parts[3]), "name": parts[4]} for parts in lines_parts
-                           if not is_excluded(parts[4], excludes)]
+                           if _is_included(parts[4], includes, excludes)]
 
         print(commit["date"])  # , end='\r')
 
 
-def is_excluded(path: str, excludes: list[str]) -> bool:
-    return any(fnmatchcase(path, exclude) or fnmatchcase(path, exclude.rstrip("/") + "/*") for exclude in excludes)
+def _is_included(path: str, includes: list[str], excludes: list[str]) -> bool:
+    return (not includes or _matches_any(path, includes)) and not _matches_any(path, excludes)
+
+
+def _matches_any(path: str, patterns: list[str]) -> bool:
+    return any(fnmatchcase(path, pattern) or fnmatchcase(path, pattern.rstrip("/") + "/*") for pattern in patterns)
